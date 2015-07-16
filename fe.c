@@ -32,6 +32,7 @@
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #define MAX_DIRS_OPEN 200
 #define MAX_LINE_LEN 2056
@@ -40,10 +41,9 @@
 #define ANSI_COLOR_GREEN  "\e[32m"
 #define ANSI_COLOR_RESET  "\e[0m"
 
-
 static regex_t SEARCH_RE;
 
-inline static void print_info(FILE *fd, const char* fpath) {
+inline static void print_matching_lines(FILE *fd, const char *fpath) {
     unsigned long line_num = 0;
     char line[MAX_LINE_LEN];
     int file_name_printed = 0;
@@ -51,12 +51,17 @@ inline static void print_info(FILE *fd, const char* fpath) {
         line_num += 1;
         int matched = !(regexec(&SEARCH_RE, line, 0, NULL, 0));
         if (matched) {
-            if (!file_name_printed) {
-               printf("%s%s%s:\n", ANSI_COLOR_GREEN, fpath, ANSI_COLOR_RESET);
-               file_name_printed = 1;
+            if (isatty(fileno(stdout))) { // if it's a terminal, print colors
+                if (!file_name_printed) {
+                   fprintf(stdout, "%s%s%s:\n",
+                           ANSI_COLOR_GREEN, fpath, ANSI_COLOR_RESET);
+                   file_name_printed = 1;
+                }
+                fprintf(stdout, "%s%lu:%s%s",
+                        ANSI_COLOR_YELLOW, line_num, ANSI_COLOR_RESET, line);
+            } else { // if redirected to e.g. a pipe, print simpler
+                fprintf(stdout, "%s:%lu:%s", fpath, line_num, line);
             }
-            printf("%s%lu:%s%s", ANSI_COLOR_YELLOW, line_num, 
-                    ANSI_COLOR_RESET, line);
         }
     }
 }
@@ -67,12 +72,12 @@ static int process_file(const char *fpath, const struct stat *sb,
     if (!is_file)
         return 0;
 
-    FILE* fd = fopen(fpath, "r");
+    FILE *fd = fopen(fpath, "r");
     if (fd == NULL) {
         perror("Error opening file for reading");
         return 0;
     }
-    print_info(fd, fpath);
+    print_matching_lines(fd, fpath);
     fclose(fd);
     return 0; // To tell nftw() to continue
 }
@@ -91,14 +96,14 @@ static int walk_dir_recursively(const char *dir) {
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("Usage: expected <re> <dir>, given 0 arguments.\n");
+        fprintf(stderr, "Usage: expected <re> <dir>, given 0 arguments.\n");
         exit(EXIT_FAILURE);
     }
     // compile re
     char *cmdline_re = argv[1];
     regcomp(&SEARCH_RE, cmdline_re, REG_EXTENDED);
     // do the searching
-    int result = walk_dir_recursively((argc < 3) ? "." : argv[2]);
+    int exit_code = walk_dir_recursively((argc < 3) ? "." : argv[2]);
     regfree(&SEARCH_RE);
-    return result;
+    return exit_code;
 }
