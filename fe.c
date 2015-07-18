@@ -92,6 +92,11 @@ static int process_file(const char *fpath, const struct stat *sb,
     if (!is_file)
         return 0;
 
+    // don't search .git dirs
+    int is_git_dir = (strstr(fpath, "/.git/") != NULL);
+    if (is_git_dir)
+        return 0;
+
     FILE *fd = fopen(fpath, "r");
     if (fd == NULL) {
         perror("Error opening file for reading");
