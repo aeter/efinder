@@ -32,10 +32,11 @@
 #include <regex.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #define MAX_DIRS_OPEN 200
-#define MAX_LINE_LEN 2056
+#define MAX_LINE_LEN 4096
 #define NUM_RE_GROUP_MATCHES 1
 
 #define ANSI_COLOR_YELLOW "\e[33m"
@@ -79,6 +80,7 @@ inline static void print_matching_lines(FILE *fd, const char *fpath) {
                 matched = !(regexec(&SEARCH_RE, line_ptr,
                             NUM_RE_GROUP_MATCHES, match_offsets, 0));
             }
+            line_ptr[strlen(line_ptr) - 1] = '\n'; // shorten lines without \n
             fprintf(stdout, "%s", line_ptr);
         }
     }
