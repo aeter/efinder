@@ -10,9 +10,5 @@ Usage: ```./fe <regex> <dir>```
   - [x] handle colour if stdout is piped/tty
   - [x] ignore searching ".git" dirs (annoying)
   - [x] search stdin when piped
+  - [x] if called as ```./fe <regex> <file>```, search the file
   - [ ] ignore searching binary files
-  - [ ] if called as ```./fe <regex> <file>```, search the file
-
-- Known bugs
-  - [ ] fix the case of "./fe main .. > out" which loops writing big file in pwd
-  - [ ] add tests

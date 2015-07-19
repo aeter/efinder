@@ -28,6 +28,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// for making ftw compile on linux
+#define _XOPEN_SOURCE 500
 #include <ftw.h>
 #include <regex.h>
 #include <stdio.h>
@@ -46,6 +48,13 @@
 
 static regex_t SEARCH_RE;
 
+inline static int is_dir(const char *path) {
+    struct stat statbuf;
+    if (stat(path, &statbuf) != 0)
+        return 0;
+    return S_ISDIR(statbuf.st_mode);
+}
+
 inline static void print_matching_lines(FILE *fd, const char *fpath) {
     unsigned long line_num = 0;
     char line[MAX_LINE_LEN];
@@ -56,16 +65,18 @@ inline static void print_matching_lines(FILE *fd, const char *fpath) {
         int matched = !(regexec(&SEARCH_RE, line, NUM_RE_GROUP_MATCHES, match_offsets, 0));
 
         // if redirected to a pipe, print simpler
-        if (matched && !isatty(fileno(stdout))) {
+        if (matched && !isatty(STDOUT_FILENO)) {
             fprintf(stdout, "%s:%lu:%s", fpath, line_num, line);
         }
         // else print with colors to the terminal.
-        else if (matched && isatty(fileno(stdout))) {
-            if (!file_name_printed  && isatty(fileno(stdin))) {
+        else if (matched && isatty(STDOUT_FILENO)) {
+            // print file name
+            if (!file_name_printed  && isatty(STDIN_FILENO)) {
                fprintf(stdout, "%s%s%s:\n",
                        ANSI_COLOR_GREEN, fpath, ANSI_COLOR_RESET);
                file_name_printed = 1;
             }
+            // print line number
             fprintf(stdout, "%s%lu:%s", ANSI_COLOR_YELLOW, line_num, ANSI_COLOR_RESET);
             // try to match all occurences of the regex pattern on the line
             // (like the flag //g in Perl), cause the regex lib lacks such flag
@@ -132,8 +143,16 @@ int main(int argc, char *argv[]) {
     }
     // do the searching
     int exit_code = 0;
-    if (isatty(fileno(stdin))) {
-        exit_code = walk_dir_recursively((argc < 3) ? "." : argv[2]);
+    if (isatty(STDIN_FILENO)) {
+        const char *path = (argc < 3) ? "." : argv[2];
+        if (is_dir(path)) {
+            exit_code = walk_dir_recursively(path);
+        }
+        else {
+            const struct stat *sb;
+            struct FTW *ftwbuf;
+            exit_code = process_file(path, sb, FTW_F, ftwbuf);
+        }
     }
     else { // stdin is piped
         print_matching_lines(stdin, "");
