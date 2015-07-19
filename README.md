@@ -5,11 +5,13 @@ Usage: ```./fe <regex> <dir>```
 
 - Features
   - [x] searching with regex patterns
+  - [x] search the dir recursively by default
   - [x] search in pwd when no dir is specified
   - [x] handle colour if stdout is piped/tty
   - [x] ignore searching ".git" dirs (annoying)
-  - [ ] search stdin when piped
+  - [x] search stdin when piped
   - [ ] ignore searching binary files
+  - [ ] if called as ```./fe <regex> <file>```, search the file
 
 - Known bugs
   - [ ] fix the case of "./fe main .. > out" which loops writing big file in pwd

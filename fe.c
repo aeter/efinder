@@ -61,7 +61,7 @@ inline static void print_matching_lines(FILE *fd, const char *fpath) {
         }
         // else print with colors to the terminal.
         else if (matched && isatty(fileno(stdout))) {
-            if (!file_name_printed) {
+            if (!file_name_printed  && isatty(fileno(stdin))) {
                fprintf(stdout, "%s%s%s:\n",
                        ANSI_COLOR_GREEN, fpath, ANSI_COLOR_RESET);
                file_name_printed = 1;
@@ -131,7 +131,13 @@ int main(int argc, char *argv[]) {
         return EXIT_FAILURE;
     }
     // do the searching
-    int exit_code = walk_dir_recursively((argc < 3) ? "." : argv[2]);
+    int exit_code = 0;
+    if (isatty(fileno(stdin))) {
+        exit_code = walk_dir_recursively((argc < 3) ? "." : argv[2]);
+    }
+    else { // stdin is piped
+        print_matching_lines(stdin, "");
+    }
     regfree(&SEARCH_RE);
     return exit_code;
 }
