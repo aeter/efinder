@@ -40,6 +40,7 @@
 #define MAX_DIRS_OPEN 200
 #define MAX_LINE_LEN 4096
 #define NUM_RE_GROUP_MATCHES 1
+#define FIRST_N_CHARS_CHECK_BINARY_FILE 256
 
 #define ANSI_COLOR_YELLOW "\e[33m"
 #define ANSI_COLOR_GREEN  "\e[32m"
@@ -53,6 +54,23 @@ inline static int is_dir(const char *path) {
     if (stat(path, &statbuf) != 0)
         return 0;
     return S_ISDIR(statbuf.st_mode);
+}
+
+// Simple check; may classify UTF-16 or UTF-32 files as binary.
+// Similar to checks in programs like mercurial, gnudiff, grep, ag, etc.
+inline static int is_binary_file(FILE *fd) {
+    // determine buf size from file size
+    struct stat statbuf;
+    if (fstat(fileno(fd), &statbuf) != 0)
+        return 0;
+    int buf_size = (statbuf.st_size < FIRST_N_CHARS_CHECK_BINARY_FILE) ?
+        statbuf.st_size : FIRST_N_CHARS_CHECK_BINARY_FILE;
+
+    // search for null bytes
+    char buf[buf_size];
+    fread(buf, sizeof(char), buf_size, fd);
+    rewind(fd);
+    return memchr(buf, '\0', buf_size) != NULL;
 }
 
 inline static void print_matching_lines(FILE *fd, const char *fpath) {
@@ -113,6 +131,12 @@ static int process_file(const char *fpath, const struct stat *sb,
         perror("Error opening file for reading");
         return 0;
     }
+
+    if (is_binary_file(fd)) {
+        fclose(fd);
+        return 0;
+    }
+
     print_matching_lines(fd, fpath);
     fclose(fd);
     return 0; // To tell nftw() to continue

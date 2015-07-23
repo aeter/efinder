@@ -11,4 +11,4 @@ Usage: ```./fe <regex> <dir>```
   - [x] ignore searching ".git" dirs (annoying)
   - [x] search stdin when piped
   - [x] if called as ```./fe <regex> <file>```, search the file
-  - [ ] ignore searching binary files
+  - [x] ignore searching binary files
